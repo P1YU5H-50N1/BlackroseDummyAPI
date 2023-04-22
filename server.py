@@ -74,6 +74,19 @@ async def check_protect():
     ]
     return orders
 
+@app.get("/placeorder",dependencies=[Depends(JWTBearer())])
+async def check_protect():
+    number_of_orders = random.randint(2,15)
+    orders =[
+        {
+        "orderID":str(uuid.uuid4()),
+        "action":random.choice(["BUY","SELL"]),
+        "quantity":random.randint(1,90),
+        "symbol":random.choice(stocks)
+        } for i in range(number_of_orders)
+    ]
+    return orders
+
 @app.post("/user/signup", tags=["user"])
 async def create_user(user: UserSchema = Body(...)):
     users.append(user) # replace with db call, making sure to hash the password first
