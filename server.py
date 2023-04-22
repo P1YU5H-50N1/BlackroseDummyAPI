@@ -19,7 +19,7 @@ async def index():
     return {"health":"Good"}
 
 
-@app.websocket("/websocket")
+@app.websocket("/streamprice")
 async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str | None, Header()] = None):
     token = authorization[7:] if authorization else None 
     if not token or not JWTBearer.verify_jwt(token):
