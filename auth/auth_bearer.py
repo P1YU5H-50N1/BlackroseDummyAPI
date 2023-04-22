@@ -1,8 +1,7 @@
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
+from .blacklist import blacklisted_tokens
 from .auth_handler import decodeJWT
-
 
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
@@ -22,6 +21,9 @@ class JWTBearer(HTTPBearer):
     def verify_jwt(self, jwtoken: str) -> bool:
         isTokenValid: bool = False
 
+        if jwtoken in blacklisted_tokens["tokens"]:
+            return False
+        
         try:
             payload = decodeJWT(jwtoken)
         except:
