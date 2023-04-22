@@ -6,8 +6,11 @@ from model import UserSchema, UserLoginSchema
 from auth.auth_handler import signJWT
 from auth.auth_bearer import JWTBearer
 from auth.blacklist import add_to_blacklist
+from utils.tickers import stocks
 from sockets import ConnectionManager
 import random
+import uuid
+
 app = FastAPI()
 
 users = []
@@ -57,6 +60,19 @@ async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str 
 @app.get("/protected",dependencies=[Depends(JWTBearer())])
 async def check_protect():
     return {"access":"granted"}
+
+@app.get("/getorderbook",dependencies=[Depends(JWTBearer())])
+async def check_protect():
+    number_of_orders = random.randint(2,15)
+    orders =[
+        {
+        "orderID":str(uuid.uuid4()),
+        "action":random.choice(["BUY","SELL"]),
+        "quantity":random.randint(1,90),
+        "symbol":random.choice(stocks)
+        } for i in range(number_of_orders)
+    ]
+    return orders
 
 @app.post("/user/signup", tags=["user"])
 async def create_user(user: UserSchema = Body(...)):
