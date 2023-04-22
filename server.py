@@ -2,6 +2,8 @@ import uvicorn
 from fastapi import FastAPI,Body, Depends
 from model import UserSchema, UserLoginSchema
 from auth.auth_handler import signJWT
+from auth.auth_bearer import JWTBearer
+
 
 app = FastAPI()
 
@@ -10,6 +12,10 @@ users = []
 @app.get("/")
 async def index():
     return {"health":"Good"}
+
+@app.get("/protected",dependencies=[Depends(JWTBearer())])
+async def check_protect():
+    return {"access":"granted"}
 
 @app.post("/user/signup", tags=["user"])
 async def create_user(user: UserSchema = Body(...)):
