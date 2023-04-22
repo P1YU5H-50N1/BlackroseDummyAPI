@@ -13,6 +13,7 @@ pydantic = {extras = ["email"], version = "*"}
 fastapi-socketio = "*"
 aiohttp = "*"
 websockets = "*"
+slowapi = "*"
 
 [dev-packages]
 

@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI,Body, Depends, Header, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI,Body, Depends, Header, WebSocket, WebSocketDisconnect, Request
 from typing import Annotated
 import asyncio
 from model import UserSchema, UserLoginSchema, Order
@@ -9,21 +9,30 @@ from auth.blacklist import add_to_blacklist
 from utils.tickers import stocks
 from sockets import ConnectionManager
 import random
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import uuid
 
+
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 users = []
 
 websockets_manager = ConnectionManager()
 
 @app.get("/")
-async def index():
+@limiter.limit("1/second")
+async def index(request:Request):
     return {"health":"Good"}
 
 
 @app.websocket("/streamprice")
-async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str | None, Header()] = None):
+async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str | None, Header(default=None)] = None):
     token = authorization[7:] if authorization else None 
     if not token or not JWTBearer.verify_jwt(token):
         await websocket.accept()
@@ -57,12 +66,9 @@ async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str 
             await websockets_manager.disconnect(websocket)
 
 
-@app.get("/protected",dependencies=[Depends(JWTBearer())])
-async def check_protect():
-    return {"access":"granted"}
-
 @app.get("/getorderbook",dependencies=[Depends(JWTBearer())])
-async def get_order_book():
+@limiter.limit("1/second")
+async def get_order_book(request: Request):
     number_of_orders = random.randint(2,15)
     orders =[
         {
@@ -74,8 +80,9 @@ async def get_order_book():
     ]
     return orders
 
-@app.get("/placeorder",dependencies=[Depends(JWTBearer())])
-async def place_order(order: Order):
+@app.post("/placeorder",dependencies=[Depends(JWTBearer())])
+@limiter.limit("1/second")
+async def place_order(request:Request,order: Order):
     # Generate fake order ID
     order_id = str(uuid.uuid4())
     success_failure_prob = [True,True,True,True,True,True,False]
@@ -99,7 +106,8 @@ async def place_order(order: Order):
 
 
 @app.post("/user/signup", tags=["user"])
-async def create_user(user: UserSchema = Body(...)):
+@limiter.limit("1/second")
+async def create_user(request:Request, user: UserSchema = Body(...)):
     users.append(user) # replace with db call, making sure to hash the password first
     return signJWT(user.email)
 
@@ -110,13 +118,15 @@ def check_user(data: UserLoginSchema):
     return False
 
 @app.post("/user/logout",dependencies=[Depends(JWTBearer())])
-async def logout(authorization: Annotated[str | None, Header()] = None):
+@limiter.limit("1/second")
+async def logout(request:Request, authorization: Annotated[str | None, Header(default=None)] = None):
     token = authorization[7:]
     add_to_blacklist(token)
     return {"msg":"logged out"}
 
 @app.post("/user/login", tags=["user"])
-async def user_login(user: UserLoginSchema = Body(...)):
+@limiter.limit("1/second")
+async def user_login(request:Request, user: UserLoginSchema = Body(...)):
     if check_user(user):
         return signJWT(user.email)
     return {
