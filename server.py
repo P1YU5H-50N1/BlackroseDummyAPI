@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI,Body, Depends, Header, WebSocket, WebSocketDisconnect
 from typing import Annotated
 import asyncio
-from model import UserSchema, UserLoginSchema
+from model import UserSchema, UserLoginSchema, Order
 from auth.auth_handler import signJWT
 from auth.auth_bearer import JWTBearer
 from auth.blacklist import add_to_blacklist
@@ -62,7 +62,7 @@ async def check_protect():
     return {"access":"granted"}
 
 @app.get("/getorderbook",dependencies=[Depends(JWTBearer())])
-async def check_protect():
+async def get_order_book():
     number_of_orders = random.randint(2,15)
     orders =[
         {
@@ -75,17 +75,28 @@ async def check_protect():
     return orders
 
 @app.get("/placeorder",dependencies=[Depends(JWTBearer())])
-async def check_protect():
-    number_of_orders = random.randint(2,15)
-    orders =[
-        {
-        "orderID":str(uuid.uuid4()),
-        "action":random.choice(["BUY","SELL"]),
-        "quantity":random.randint(1,90),
-        "symbol":random.choice(stocks)
-        } for i in range(number_of_orders)
-    ]
-    return orders
+async def place_order(order: Order):
+    # Generate fake order ID
+    order_id = str(uuid.uuid4())
+    success_failure_prob = [True,True,True,True,True,True,False]
+    # Create response
+    success = random.choice(success_failure_prob)
+    if success:
+        response = {
+            "success": success,
+            "orderID": order_id,
+            "note": f"{order.action} {order.quantity} shares of {order.symbol} placed"
+        }
+    else:
+        response = {
+            "success": success,
+            "orderID": None,
+            "note": f"{order.action} {order.quantity} shares of {order.symbol}\
+                  can't be placed because of margin requirements"
+        }       
+    return response
+
+
 
 @app.post("/user/signup", tags=["user"])
 async def create_user(user: UserSchema = Body(...)):
