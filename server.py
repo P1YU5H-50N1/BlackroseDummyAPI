@@ -1,19 +1,39 @@
 import uvicorn
-from fastapi import FastAPI,Body, Depends, Header
+from fastapi import FastAPI,Body, Depends, Header, WebSocket, WebSocketDisconnect
 from typing import Annotated
 from model import UserSchema, UserLoginSchema
-from auth.auth_handler import signJWT, decodeJWT
+from auth.auth_handler import signJWT
 from auth.auth_bearer import JWTBearer
 from auth.blacklist import add_to_blacklist
-
+from sockets import ConnectionManager
 
 app = FastAPI()
 
 users = []
 
+websockets_manager = ConnectionManager()
+
 @app.get("/")
 async def index():
     return {"health":"Good"}
+
+
+@app.websocket("/websocket")
+async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str | None, Header()] = None):
+    token = authorization[7:] if authorization else None 
+    if not token or not JWTBearer.verify_jwt(token):
+        await websocket.accept()
+        await websocket.close(code=4000,reason="Invalid Token")
+    else: 
+        await websockets_manager.connect(websocket)
+        try:
+            while True:
+                data = await websocket.receive_json()
+                print(data)
+                await websocket.send_json(data)
+        except WebSocketDisconnect:
+            await websockets_manager.disconnect(websocket)
+
 
 @app.get("/protected",dependencies=[Depends(JWTBearer())])
 async def check_protect():

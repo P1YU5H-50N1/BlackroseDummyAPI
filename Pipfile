@@ -5,11 +5,14 @@ name = "pypi"
 
 [packages]
 fastapi = "*"
-uvicorn = "*"
-python-socketio = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+python-socketio = {extras = ["asyncio_client"], version = "*"}
 pyjwt = "*"
 python-decouple = "*"
 pydantic = {extras = ["email"], version = "*"}
+fastapi-socketio = "*"
+aiohttp = "*"
+websockets = "*"
 
 [dev-packages]
 
