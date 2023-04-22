@@ -1,12 +1,13 @@
 import uvicorn
 from fastapi import FastAPI,Body, Depends, Header, WebSocket, WebSocketDisconnect
 from typing import Annotated
+import asyncio
 from model import UserSchema, UserLoginSchema
 from auth.auth_handler import signJWT
 from auth.auth_bearer import JWTBearer
 from auth.blacklist import add_to_blacklist
 from sockets import ConnectionManager
-
+import random
 app = FastAPI()
 
 users = []
@@ -25,12 +26,30 @@ async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str 
         await websocket.accept()
         await websocket.close(code=4000,reason="Invalid Token")
     else: 
+        symbols = set()
         await websockets_manager.connect(websocket)
+
+        async def send_messages(symbols,websocket):
+            while True:
+                await asyncio.sleep(1)
+                if len(symbols) > 0:
+                    prices = str([(i,random.randint(0,100)) for i in symbols])
+                    await websocket.send_text(prices)
+
+
+        asyncio.create_task(send_messages(symbols,websocket))
+
         try:
             while True:
-                data = await websocket.receive_json()
-                print(data)
-                await websocket.send_json(data)
+                try:
+                    data = await websocket.receive_json()
+                    print(data)
+                    if "symbols" in data:
+                        for i in data['symbols']:
+                            symbols.add(i)
+                except Exception as e:
+                    await websocket.send_json({"Status":"Error occured, invalid message"})
+
         except WebSocketDisconnect:
             await websockets_manager.disconnect(websocket)
 
