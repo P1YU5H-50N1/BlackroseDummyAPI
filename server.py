@@ -4,7 +4,7 @@ from typing import Annotated
 from model import UserSchema, UserLoginSchema
 from auth.auth_handler import signJWT, decodeJWT
 from auth.auth_bearer import JWTBearer
-from auth.blacklist import blacklisted_tokens
+from auth.blacklist import add_to_blacklist
 
 
 app = FastAPI()
@@ -33,9 +33,7 @@ def check_user(data: UserLoginSchema):
 @app.post("/user/logout",dependencies=[Depends(JWTBearer())])
 async def logout(authorization: Annotated[str | None, Header()] = None):
     token = authorization[7:]
-    payload = decodeJWT(token)
-    blacklisted_tokens["tokens"].append(token)
-    blacklisted_tokens["expiry_date"][token] = payload['expires']
+    add_to_blacklist(token)
     return {"msg":"logged out"}
 
 @app.post("/user/login", tags=["user"])
