@@ -108,6 +108,9 @@ async def place_order(request:Request,order: Order):
 @app.post("/user/signup", tags=["user"])
 @limiter.limit("1/second")
 async def create_user(request:Request, user: UserSchema = Body(...)):
+    for u in users:
+        if u.email == user.email:
+            return {"msg":"User Already exists"}
     users.append(user) # replace with db call, making sure to hash the password first
     return signJWT(user.email)
 
