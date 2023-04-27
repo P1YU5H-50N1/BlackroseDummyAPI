@@ -32,7 +32,7 @@ async def index(request:Request):
 
 
 @app.websocket("/streamprice")
-async def websocket_endpoint(websocket: WebSocket, authorization: Annotated[str | None, Header(default=None)] = None):
+async def websocket_endpoint(websocket: WebSocket, authorization: str = Header(default=None)):
     token = authorization[7:] if authorization else None 
     if not token or not JWTBearer.verify_jwt(token):
         await websocket.accept()
@@ -122,7 +122,7 @@ def check_user(data: UserLoginSchema):
 
 @app.post("/user/logout",dependencies=[Depends(JWTBearer())])
 @limiter.limit("1/second")
-async def logout(request:Request, authorization: Annotated[str | None, Header(default=None)] = None):
+async def logout(request:Request,  authorization: str = Header(default=None)):
     token = authorization[7:]
     add_to_blacklist(token)
     return {"msg":"logged out"}
